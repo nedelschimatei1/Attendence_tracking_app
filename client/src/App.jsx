@@ -9,7 +9,7 @@ function App() {
 
   const fetchApi = async()=>{
     const response = axios.get("http://localhost:8080/api")
-    console.log((await response).data.testNumbers)
+    console.log((await response).data.nice)
   }
 
   useEffect(()=>{
