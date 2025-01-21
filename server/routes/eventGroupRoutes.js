@@ -123,6 +123,49 @@ eventGroupRoutes.get('/:id', verifyToken, async (req, res) => {
   }
 });
 
+eventGroupRoutes.delete('/', verifyToken, async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    // If user is an event organizer, only delete their groups
+    const whereClause = req.user.role === 'eventOrganizer' 
+      ? { organizerId: req.user.userId }
+      : {};
+
+    const eventGroups = await EventGroup.findAll({
+      where: whereClause,
+      transaction: t
+    });
+
+    if (eventGroups.length === 0) {
+      return res.status(404).json({ error: 'No event groups found' });
+    }
+
+    // Get all event group IDs
+    const groupIds = eventGroups.map(group => group.id);
+
+    await Event.destroy({
+      where: { groupId: groupIds },
+      transaction: transaction
+    });
+
+    await EventGroup.destroy({
+      where: whereClause,
+      transaction: transaction
+    });
+
+    await transaction.commit();
+    res.status(200).json({ 
+      message: `Successfully deleted ${eventGroups.length} event groups and their events`
+    });
+
+  } catch (err) {
+    await transaction.rollback();
+    console.error('Error deleting all event groups:', err);
+    res.status(500).json({ error: 'Failed to delete event groups' });
+  }
+});
+
 eventGroupRoutes.delete('/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
